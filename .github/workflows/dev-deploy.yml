@@ -1,0 +1,52 @@
+name: 通用自动开发部署流程
+on:
+  push:
+    branches: [ main ]
+    paths: [ "prompt.md" ]
+  workflow_dispatch:
+
+jobs:
+  universal-dev:
+    runs-on: ubuntu-latest # 默认为云端模式，本地模式改self-hosted
+    env:
+      DOUBAO_API_KEY: ${{ secrets.DOUBAO_API_KEY }}
+      WORK_DIR: ${{ github.workspace }}
+
+    steps:
+      - name: 拉取Git代码
+        uses: actions/checkout@v4
+
+      - name: 安装基础依赖
+        run: |
+          sudo apt update && sudo apt install -y python3 python3-pip docker.io docker-compose
+          sudo systemctl start docker
+          pip3 install requests pyyaml flask
+
+      - name: 加载AI配置
+        run: |
+          if [ ! -f "config/ai_config.yaml" ]; then
+              mkdir -p config
+              echo "api_type: doubao
+api_key: ${DOUBAO_API_KEY}
+api_url: https://api.doubao.com/v1/chat/completions" > config/ai_config.yaml
+          fi
+
+      - name: 执行开发脚本
+        run: |
+          # 检查prompt.md是否存在
+          if [ -f "prompt.md" ]; then
+              SCENE=$(grep '场景:' prompt.md | awk -F ':' '{print $2}' | tr -d ' ')
+              echo "开始部署${SCENE}场景..."
+              # 这里替换成你实际的部署命令
+              # python3 scripts/auto_fix.py (确保文件存在)
+          else
+              echo "prompt.md文件不存在，跳过部署"
+          fi
+        continue-on-error: true
+
+      - name: 输出部署日志
+        run: |
+          # 确保日志目录存在
+          mkdir -p logs
+          echo "部署完成时间: $(date)" > logs/_debug.log
+          cat logs/_debug.log
